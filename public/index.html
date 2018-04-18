@@ -1,12 +1,405 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Order Tracking</title>
+    <title>Google Map</title>
+    <style>
+        #right-panel {
+            font-family: 'Roboto', 'sans-serif';
+            line-height: 30px;
+            padding-left: 10px;
+        }
+
+        #right-panel select,
+        #right-panel input {
+            font-size: 15px;
+        }
+
+        #right-panel select {
+            width: 100%;
+        }
+
+        #right-panel i {
+            font-size: 12px;
+        }
+
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            height: 100%;
+            width: 75%;
+        }
+
+        #right-panel {
+            float: right;
+            width: 48%;
+            padding-left: 2%;
+        }
+
+        #output {
+            font-size: 11px;
+        }
+    </style>
 </head>
+
 <body>
-    <h3>You have reached index.html</h3>
+    <div>
+        <button onclick="TrackLocation()">Get location</button>
+        <button onclick="DeleteCurrentMarkers()">Delete Current Markers</button>
+        <button onclick="GetItemViaSDK()">Get Item via SDK</button>
+
+    </div>
+    <div id="right-panel">
+        <div id="inputs">
+            <!-- <pre>
+          var origin1 = {lat: 55.930, lng: -3.118};
+          var origin2 = 'Greenwich, England';
+          var destinationA = 'Stockholm, Sweden';
+          var destinationB = {lat: 50.087, lng: 14.421};
+                  </pre> -->
+        </div>
+        <div>
+            <strong>Results</strong>
+        </div>
+        <div id="output"></div>
+    </div>
+    <div id="map"></div>
+
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.7.18.min.js"></script>
+    <script>
+        function GetItemViaSDK() {
+
+            // Set credentials for AWS
+            let creds = new AWS.Credentials(
+                {
+                    accessKeyId: 'AKIAJ44WICWSW2D46EGQ',
+                    secretAccessKey: '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'
+                });
+
+            // Update config for AWS with credentials and region
+            AWS.config.update({
+                credentials: creds,
+                region: 'us-west-2'
+            });
+
+            const lambda = new AWS.Lambda();
+            var payload = { 
+                "phone" : "210-896-1837", 
+                "timestamp" : "0" 
+            };
+            var params = {
+                FunctionName: "demo-lambda-getGeoLocation",
+                InvocationType: "RequestResponse",
+                Payload: JSON.stringify(payload)
+            };
+            lambda.invoke(params, (err, data) => {
+                if(err) {
+                    console.log('Error \n', err);
+                } else {
+                    console.log('Success \n', JSON.parse(data.Payload));
+                    let payload = JSON.parse(data.Payload);
+                    // let body = payload.body;
+                    // let items = body.Items;
+                    // let item = items[0];
+                    console.log('\n payload: \n', payload);
+                    console.log('\n payload.statusCode: \n', payload.statusCode);
+                    console.log('\n payload.headers: \n', payload.headers);
+                    console.log('\n payload.body: \n', payload.body);
+                    console.log('\n payload.body.Items: \n', payload.body.Items);
+                    // console.log('\n payload.body.ConsumedCapacity.TableName: \n', payload.body.ConsumedCapacity.TableName);
+                    // console.log('\n Body: \n', body);
+                    // console.log('\n Items: \n', items);
+                    // console.log('\n Item: \n', item);
+                }
+            })
+        }
+    
+        
+    </script>
+    <script>
+        let map;
+        let originIcon;
+        let destinationIcon;
+        let bearing;
+        let markersArray = [];
+        let gblOrigin = { lat: 29.5832031, lng: -98.5214581 };
+        let gblDestination = { lat: 29.562707, lng: -98.561375 };
+        var prevPosition = { lat: 29.562524, lng: -98.5214581 };
+    </script>
+
+    <!-- JQuery  -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+
+    <!-- Google map api -->
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBZ_p0_darUbPa23uJR3XtA67iONC7VD7g&libraries=geometry&callback=initMap"></script>
+
+    <script>
+        let ms = 1000;
+        let maxItems = 60;
+        let counter = 0;
+        let lastTimestamp = "0";
+        function TrackLocation() {
+            let intervalId = setInterval(function () {
+
+                let geodata = {
+                    "orderid": "12345",
+                    "transtimestamp": lastTimestamp
+                }
+                let url = `http://54.200.121.119:5001/api/geodata/${geodata.orderid}/${geodata.transtimestamp}`
+                $.ajax({
+                    type: "GET",
+                    url: url,
+                    // data: JSON.stringify(geodata),
+                    dataType: "json",
+                    headers: {
+                        "Content-Type": "application/json"
+                    }
+
+                }).done(function (data, status) {
+                    console.log('data: \n', data);
+                    let item = data.Items[0];
+                    let position = {
+                        latitude: Number(item.lat.S),
+                        longitude: Number(item.lon.S)
+                    };
+                    bearing = Number(item.heading.N);
+                    // Set retrieved timestamp
+                    let numlastTimestamp = Number(item.timestamp.S) + 20000;
+                    lastTimestamp = numlastTimestamp.toString();
+                    // Place on goeodataMap
+                    // success(item);
+
+                    // Set current location for google map
+                    gblOrigin = { lat: position.latitude, lng: position.longitude };
+
+                    // Reset Markers on Google map
+                    if (markersArray) {
+                        // console.log("Markers: ", markersArray);
+                        deleteMarkers(markersArray);
+                    }
+                    let markerPositions = [];
+                    markerPositions.push(gblOrigin);
+                    markerPositions.push(gblDestination);
+
+                    resetMarkers(markerPositions);
+
+                    // Set previous position
+                    prevPosition = position;
+
+
+                    if ((++counter >= maxItems) || (position === gblDestination) || (lastTimestamp >= "1517080359000") || (item === {})) {
+                        // alert("about to clear interval");
+                        clearInterval(intervalId);
+                        if (lastTimestamp >= "1517080359000") {
+                            alert("Your shipment has arrived at its Destination!!!");
+                        }
+                    }
+                });
+
+
+            }, ms);
+        }
+
+    </script>
+
+
+    <script>
+        function initMap() {
+            var bounds = new google.maps.LatLngBounds;
+            markersArray = [];
+
+            destinationIcon = 'https://chart.googleapis.com/chart?' +
+                'chst=d_map_pin_letter&chld=D|FF0000|000000';
+            originIcon = 'https://chart.googleapis.com/chart?' +
+                'chst=d_map_pin_letter&chld=O|FFFF00|000000';
+            originIcon = 'images/delivery-truck.svg';
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: { lat: 55.53, lng: 9.4 },
+                zoom: 10
+            });
+            var geocoder = new google.maps.Geocoder;
+
+            var service = new google.maps.DistanceMatrixService;
+            service.getDistanceMatrix({
+                origins: [gblOrigin],
+                destinations: [gblDestination],
+                travelMode: 'DRIVING',
+                unitSystem: google.maps.UnitSystem.METRIC,
+                avoidHighways: false,
+                avoidTolls: false
+            }, function (response, status) {
+                if (status !== 'OK') {
+                    alert('Error was: ' + status);
+                } else {
+                    var originList = response.originAddresses;
+                    var destinationList = response.destinationAddresses;
+                    var outputDiv = document.getElementById('output');
+                    outputDiv.innerHTML = '';
+                    deleteMarkers(markersArray);
+
+                    var showGeocodedAddressOnMap = function (asDestination) {
+                        var icon = asDestination ? destinationIcon : originIcon;
+                        return function (results, status) {
+                            if (status === 'OK') {
+                                map.fitBounds(bounds.extend(results[0].geometry.location));
+                                markersArray.push(new google.maps.Marker({
+                                    map: map,
+                                    position: results[0].geometry.location,
+                                    icon: icon
+                                }));
+                            } else {
+                                alert('Geocode was not successful due to: ' + status);
+                            }
+                        };
+                    };
+
+                    for (var i = 0; i < originList.length; i++) {
+                        var results = response.rows[i].elements;
+                        geocoder.geocode({ 'address': originList[i] },
+                            showGeocodedAddressOnMap(true));
+                        for (var j = 0; j < results.length; j++) {
+                            geocoder.geocode({ 'address': destinationList[j] },
+                                showGeocodedAddressOnMap(true));
+                            outputDiv.innerHTML += originList[i] + ' to ' + destinationList[j] +
+                                ': ' + results[j].distance.text + ' in ' +
+                                results[j].duration.text + '<br>';
+                        }
+                    }
+                }
+            });
+        }
+
+        function deleteMarkers(markersArray) {
+            for (var i = 0; i < markersArray.length; i++) {
+                if (markersArray[i] != gblDestination)
+                    var marker;
+                marker = markersArray[i];
+                var position = {};
+                position.lat = marker.getPosition().lat();
+                position.lon = marker.getPosition().lng();
+                //console.log("Deleting Marker---> ", markersArray[i]);
+                if (position.lat != gblDestination.lat) {
+
+                    // console.log("Deleting Marker Position---> ", position);
+                    markersArray[i].setMap(null);
+                }
+            }
+            // markersArray = [];
+        }
+
+        function resetMarkers(markerPositions) {
+            let index = 0;
+            markerPositions.forEach(position => {
+                if (index === 0) {
+                    addMarker(position, originIcon, "");
+                } else {
+                    addMarker(position, destinationIcon, "Dest");
+                }
+                index++;
+            });
+        }
+
+        function addMarker(position, icon, label) {
+            let marker = new google.maps.Marker({
+                position: position,
+                map: map,
+                label: label
+            })
+
+            if (label != 'Dest') {
+                console.log('Marker at origin: \n', marker);
+                let prevLatLng = new google.maps.LatLng(prevPosition.longitude, prevPosition.latitude);
+                let rotation = google.maps.geometry.spherical.computeHeading(prevLatLng, marker.getPosition());
+                // console.log('Rotation: \n', rotation);
+                // console.log('Google SVG \n:', google.maps.SymbolPath.FORWARD_CLOSED_ARROW);
+                marker.setIcon({
+                    // path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                    // url: icon,
+                    url: '../images/triangle.svg',
+                    strokeColor: 'blue',
+                    fillColor: 'green',
+                    fillOpacity: 1.0,
+                    strokeWeight: 3,
+                    scale: 6,
+                    rotation: rotation
+                })
+            }
+
+            // Get reverse address from lat/lng
+            var infowindow = new google.maps.InfoWindow();
+            var geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ location: marker.getPosition() }, function (results, status) {
+                if (status === 'OK') {
+                    if (results[0]) {
+                        // console.log(results[0].formatted_address);
+                        infowindow.setContent(results[0].formatted_address);
+                        marker.addListener('mouseover', function () {
+                            infowindow.open(map, marker);
+                        })
+                    }
+                }
+            })
+
+
+            // let prevLatLng = new google.maps.LatLng(prevPosition.longitude, prevPosition.latitude);
+            // let currLatLng = new google.maps.LatLng(gblOrigin.longitude, gblOrigin.latitude);
+            // let heading = google.maps.geometry.spherical.computeHeading(prevLatLng, currLatLng);
+
+            // marker.setIcon({
+            //     url: icon,
+            //     rotation: heading
+            // })
+
+            markersArray.push(marker);
+
+
+            // // Add Polylines
+            google.maps.event.addListener(markersArray[0], 'position_changed', update);
+            // google.maps.event.addListener(markersArray[1], 'position_changed', update);
+
+            poly = new google.maps.Polyline({
+                strokeColor: '#FF0000',
+                strokeOpacity: 1.0,
+                strokeWeight: 3,
+                map: map,
+            });
+
+            geodesicPoly = new google.maps.Polyline({
+                strokeColor: '#CC0099',
+                strokeOpacity: 1.0,
+                strokeWeight: 3,
+                geodesic: true,
+                map: map
+            });
+
+            update(markersArray[0], markersArray[1]);
+        }
+
+        function DeleteCurrentMarkers() {
+            deleteMarkers(markersArray);
+        }
+
+        function update(marker1, marker2) {
+            var path = [marker1.getPosition(), marker2.getPosition()];
+            // poly.setPath(path);
+            // geodesicPoly.setPath(path);
+            // var heading = google.maps.geometry.spherical.computeHeading(path[0], path[1]);
+            // document.getElementById('heading').value = heading;
+            // document.getElementById('origin').value = path[0].toString();
+            // document.getElementById('destination').value = path[1].toString();
+        }
+
+    </script>
+
+
 </body>
+
 </html>

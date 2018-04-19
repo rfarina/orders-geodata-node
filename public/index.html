@@ -185,7 +185,7 @@
                     "transtimestamp": lastTimestamp
                 }
                 let url = `http://54.200.121.119:5001/api/geodata/${geodata.orderid}/${geodata.transtimestamp}`;
-                url = `http://localhost:5001/api/geodata/${geodata.orderid}/${geodata.transtimestamp}`;
+                // url = `http://localhost:5001/api/geodata/${geodata.orderid}/${geodata.transtimestamp}`;
                 console.log('url', url);
                 $.ajax({
                     type: "GET",

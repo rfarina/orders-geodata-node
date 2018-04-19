@@ -10,7 +10,7 @@
         "sourceType": "module"
     },
     "rules": {
-        "no-console":"off",
+        "no-console":"warn",
         "indent": [
             "error",
             4

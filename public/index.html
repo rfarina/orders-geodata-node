@@ -6,6 +6,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Google Map</title>
+
+    <!-- Fontawsome -->
+    <link rel="stylesheet" href="../styles/font-awesome-4.7.0/css/font-awesome.min.css">
+
+    <!-- Bootstrap -->
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u"
+        crossorigin="anonymous">
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+     <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+     <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- Page level styles -->
     <style>
         #right-panel {
             font-family: 'Roboto', 'sans-serif';
@@ -34,8 +51,9 @@
         }
 
         #map {
-            height: 100%;
-            width: 75%;
+            height: 600px;
+            width: 100%;
+            position: relative;
         }
 
         #right-panel {
@@ -45,85 +63,102 @@
         }
 
         #output {
-            font-size: 11px;
+            font-size: 14px;
         }
     </style>
 </head>
 
 <body>
-    <div>
-        <button onclick="TrackLocation()">Get location</button>
-        <button onclick="DeleteCurrentMarkers()">Delete Current Markers</button>
-        <button onclick="GetItemViaSDK()">Get Item via SDK</button>
+
+    <!-- Modal -->
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                    <h3 class="modal-title" id="myModalLabel">Shipment Status</h3>
+                </div>
+                <div class="modal-body">
+                    <h4>Your shipment has arrived at destination!!!</h4>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Buttons and Shipment Status -->
+    <div class="container">
+        <div class="row">
+            <!-- Split button -->
+            <div class="btn-group">
+                <button type="button" class="btn btn-primary">Select Order Id</button>
+                <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <span class="caret"></span>
+                    <span class="sr-only">Toggle Dropdown</span>
+                </button>
+                <ul class="dropdown-menu">
+                    <li>
+                        <a href="#">12345</a>
+                    </li>
+                </ul>
+            </div>
+
+            <button class="btn btn-primary" onclick="TrackLocation()">Track shipment
+                <i class="fa fa-truck" aria-hidden="true"></i>
+            </button>
+
+            <!-- Button trigger modal -->
+            <button id="btnArrived" type="button" class="btn btn-primary" style="display:none;" data-toggle="modal" data-target="#myModal">
+                Launch demo modal
+            </button>
+
+        </div>
+
+        <div class="row">
+            <!-- Order Info -->
+            <div class="well col-xs-4">
+                Order Id: 12345
+            </div>
+
+            <!-- Tracking Info -->
+            <div id="output" class="well col-xs-8">
+            </div>
+        </div>
+
 
     </div>
-    <div id="right-panel">
-        <div id="inputs">
-            <!-- <pre>
-          var origin1 = {lat: 55.930, lng: -3.118};
-          var origin2 = 'Greenwich, England';
-          var destinationA = 'Stockholm, Sweden';
-          var destinationB = {lat: 50.087, lng: 14.421};
-                  </pre> -->
+
+
+    <!-- Map -->
+    <div class="container">
+
+        <div class="row">
+
+            <div id="map" class="well"></div>
+
         </div>
-        <div>
-            <strong>Results</strong>
-        </div>
-        <div id="output"></div>
+
     </div>
-    <div id="map"></div>
 
-    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.7.18.min.js"></script>
-    <script>
-        function GetItemViaSDK() {
 
-            // Set credentials for AWS
-            let creds = new AWS.Credentials(
-                {
-                    accessKeyId: 'AKIAJ44WICWSW2D46EGQ',
-                    secretAccessKey: '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'
-                });
 
-            // Update config for AWS with credentials and region
-            AWS.config.update({
-                credentials: creds,
-                region: 'us-west-2'
-            });
 
-            const lambda = new AWS.Lambda();
-            var payload = { 
-                "phone" : "210-896-1837", 
-                "timestamp" : "0" 
-            };
-            var params = {
-                FunctionName: "demo-lambda-getGeoLocation",
-                InvocationType: "RequestResponse",
-                Payload: JSON.stringify(payload)
-            };
-            lambda.invoke(params, (err, data) => {
-                if(err) {
-                    console.log('Error \n', err);
-                } else {
-                    console.log('Success \n', JSON.parse(data.Payload));
-                    let payload = JSON.parse(data.Payload);
-                    // let body = payload.body;
-                    // let items = body.Items;
-                    // let item = items[0];
-                    console.log('\n payload: \n', payload);
-                    console.log('\n payload.statusCode: \n', payload.statusCode);
-                    console.log('\n payload.headers: \n', payload.headers);
-                    console.log('\n payload.body: \n', payload.body);
-                    console.log('\n payload.body.Items: \n', payload.body.Items);
-                    // console.log('\n payload.body.ConsumedCapacity.TableName: \n', payload.body.ConsumedCapacity.TableName);
-                    // console.log('\n Body: \n', body);
-                    // console.log('\n Items: \n', items);
-                    // console.log('\n Item: \n', item);
-                }
-            })
-        }
-    
-        
-    </script>
+    <!-- JQuery  -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
+        crossorigin="anonymous"></script>
+
+    <!-- Google map api -->
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBZ_p0_darUbPa23uJR3XtA67iONC7VD7g&libraries=geometry&callback=initMap"></script>
+
+    <!-- Map variables -->
     <script>
         let map;
         let originIcon;
@@ -135,12 +170,7 @@
         var prevPosition = { lat: 29.562524, lng: -98.5214581 };
     </script>
 
-    <!-- JQuery  -->
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-
-    <!-- Google map api -->
-    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBZ_p0_darUbPa23uJR3XtA67iONC7VD7g&libraries=geometry&callback=initMap"></script>
-
+    <!-- API Access to retrieve current geographic points -->
     <script>
         let ms = 1000;
         let maxItems = 60;
@@ -149,31 +179,37 @@
         function TrackLocation() {
             let intervalId = setInterval(function () {
 
+                console.log('LastTimeStamp', lastTimestamp);
                 let geodata = {
                     "orderid": "12345",
                     "transtimestamp": lastTimestamp
                 }
-                let url = `http://54.200.121.119:5001/api/geodata/${geodata.orderid}/${geodata.transtimestamp}`
+                let url = `http://54.200.121.119:5001/api/geodata/${geodata.orderid}/${geodata.transtimestamp}`;
+                url = `http://localhost:5001/api/geodata/${geodata.orderid}/${geodata.transtimestamp}`;
+                console.log('url', url);
                 $.ajax({
                     type: "GET",
                     url: url,
-                    // data: JSON.stringify(geodata),
+                    data: JSON.stringify(geodata),
                     dataType: "json",
                     headers: {
                         "Content-Type": "application/json"
                     }
 
                 }).done(function (data, status) {
-                    console.log('data: \n', data);
-                    let item = data.Items[0];
+                    console.log('Response data: \n', data);
+                    let item = data.item;
                     let position = {
                         latitude: Number(item.lat.S),
                         longitude: Number(item.lon.S)
                     };
                     bearing = Number(item.heading.N);
+
                     // Set retrieved timestamp
-                    let numlastTimestamp = Number(item.timestamp.S) + 20000;
+                    let numlastTimestamp = Number(item.transtimestamp.S) + 20000;
                     lastTimestamp = numlastTimestamp.toString();
+                    console.log('numLastTimeStamp', numlastTimestamp);
+                    console.log('Updated LastTimeStamp', lastTimestamp);
                     // Place on goeodataMap
                     // success(item);
 
@@ -199,9 +235,14 @@
                         // alert("about to clear interval");
                         clearInterval(intervalId);
                         if (lastTimestamp >= "1517080359000") {
-                            alert("Your shipment has arrived at its Destination!!!");
+                            // Trigger the modal dialog
+                            $('#btnArrived').trigger('click');
+                            // alert("Your shipment has arrived at its Destination!!!");
                         }
                     }
+                }).fail(function (err) {
+                    clearInterval(intervalId);
+                    console.log('An error occurred while retrieving geo location: ', err);
                 });
 
 
@@ -210,8 +251,10 @@
 
     </script>
 
-
+    <!-- Map functions -->
     <script>
+
+        // Initialize Map
         function initMap() {
             var bounds = new google.maps.LatLngBounds;
             markersArray = [];
@@ -277,6 +320,7 @@
             });
         }
 
+
         function deleteMarkers(markersArray) {
             for (var i = 0; i < markersArray.length; i++) {
                 if (markersArray[i] != gblDestination)
@@ -323,7 +367,8 @@
                 marker.setIcon({
                     // path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
                     // url: icon,
-                    url: '../images/triangle.svg',
+                    // url: '../images/triangle.svg',
+                    url: '../images/truck.png',
                     strokeColor: 'blue',
                     fillColor: 'green',
                     fillOpacity: 1.0,
@@ -344,6 +389,9 @@
                         marker.addListener('mouseover', function () {
                             infowindow.open(map, marker);
                         })
+
+                        // Update the current address on the page
+                        $('#output').html(results[0].formatted_address);
                     }
                 }
             })

@@ -24,24 +24,6 @@
 
     <!-- Page level styles -->
     <style>
-        #right-panel {
-            font-family: 'Roboto', 'sans-serif';
-            line-height: 30px;
-            padding-left: 10px;
-        }
-
-        #right-panel select,
-        #right-panel input {
-            font-size: 15px;
-        }
-
-        #right-panel select {
-            width: 100%;
-        }
-
-        #right-panel i {
-            font-size: 12px;
-        }
 
         html,
         body {
@@ -56,12 +38,6 @@
             position: relative;
         }
 
-        #right-panel {
-            float: right;
-            width: 48%;
-            padding-left: 2%;
-        }
-
         #output {
             font-size: 14px;
         }
@@ -70,7 +46,7 @@
 
 <body>
 
-    <!-- Modal -->
+    <!-- Modal for shipment arrival at destination -->
     <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
@@ -101,14 +77,17 @@
                     <span class="caret"></span>
                     <span class="sr-only">Toggle Dropdown</span>
                 </button>
-                <ul class="dropdown-menu">
+                <ul id="orderIds" class="dropdown-menu">
                     <li>
                         <a href="#">12345</a>
+                    </li>
+                    <li>
+                        <a href="#">xxxxx</a>
                     </li>
                 </ul>
             </div>
 
-            <button class="btn btn-primary" onclick="TrackLocation()">Track shipment
+            <button id="btnTrackShipment" class="btn btn-primary">Track Shipment
                 <i class="fa fa-truck" aria-hidden="true"></i>
             </button>
 
@@ -121,8 +100,8 @@
 
         <div class="row">
             <!-- Order Info -->
-            <div class="well col-xs-4">
-                Order Id: 12345
+            <div id="orderInfo" class="well col-xs-4">
+                Please select Order Id
             </div>
 
             <!-- Tracking Info -->
@@ -130,19 +109,14 @@
             </div>
         </div>
 
-
     </div>
 
 
     <!-- Map -->
     <div class="container">
-
         <div class="row">
-
             <div id="map" class="well"></div>
-
         </div>
-
     </div>
 
 
@@ -151,7 +125,7 @@
     <!-- JQuery  -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
 
-    <!-- Latest compiled and minified JavaScript -->
+    <!-- Latest compiled and minified JavaScript for Bootstrap -->
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
         crossorigin="anonymous"></script>
 
@@ -171,22 +145,50 @@
     </script>
 
     <!-- API Access to retrieve current geographic points -->
+
+    <!-- 
+        As this is a simulation and not a "real-time" access of geographic point as they
+        occur, we will be accessing a pre-established set of points in the DynamoDB table
+        via the API G/W and Lambda.
+
+        Accessing every geographic point would be excessive for this demo. Instead, we 
+        will do 2 things to "speed up" the demo:
+            1. Only issue 60 read requests (maxItems)
+            2. Increment the retrieved timestamp by 20,000 to "skip" many items (records)
+               that we don't need. (This can be seen in the resolve of the ajax invocation)
+     -->
     <script>
         let ms = 1000;
         let maxItems = 60;
         let counter = 0;
         let lastTimestamp = "0";
-        function TrackLocation() {
+        let orderid = '';
+
+        // Get selected order number
+        $('#orderIds a').on('click', function (e) {
+            e.preventDefault();
+            orderid = $(this).text();
+            $('#orderInfo').html('Order Id: ' + orderid);
+        });
+
+        // Validate that orderid has been selected
+        $('#btnTrackShipment').on('click', function (e) {
+            if (orderid === '') {
+                alert('Please select Order Id');
+            } else {
+                TrackShipment();
+            }
+        })
+
+        function TrackShipment() {
             let intervalId = setInterval(function () {
 
-                console.log('LastTimeStamp', lastTimestamp);
                 let geodata = {
-                    "orderid": "12345",
+                    "orderid": orderid,
                     "transtimestamp": lastTimestamp
                 }
                 let url = `http://54.200.121.119:5001/api/geodata/${geodata.orderid}/${geodata.transtimestamp}`;
                 // url = `http://localhost:5001/api/geodata/${geodata.orderid}/${geodata.transtimestamp}`;
-                console.log('url', url);
                 $.ajax({
                     type: "GET",
                     url: url,
@@ -195,54 +197,59 @@
                     headers: {
                         "Content-Type": "application/json"
                     }
-
                 }).done(function (data, status) {
-                    console.log('Response data: \n', data);
-                    let item = data.item;
-                    let position = {
-                        latitude: Number(item.lat.S),
-                        longitude: Number(item.lon.S)
-                    };
-                    bearing = Number(item.heading.N);
 
-                    // Set retrieved timestamp
-                    let numlastTimestamp = Number(item.transtimestamp.S) + 20000;
-                    lastTimestamp = numlastTimestamp.toString();
-                    console.log('numLastTimeStamp', numlastTimestamp);
-                    console.log('Updated LastTimeStamp', lastTimestamp);
-                    // Place on goeodataMap
-                    // success(item);
-
-                    // Set current location for google map
-                    gblOrigin = { lat: position.latitude, lng: position.longitude };
-
-                    // Reset Markers on Google map
-                    if (markersArray) {
-                        // console.log("Markers: ", markersArray);
-                        deleteMarkers(markersArray);
-                    }
-                    let markerPositions = [];
-                    markerPositions.push(gblOrigin);
-                    markerPositions.push(gblDestination);
-
-                    resetMarkers(markerPositions);
-
-                    // Set previous position
-                    prevPosition = position;
-
-
-                    if ((++counter >= maxItems) || (position === gblDestination) || (lastTimestamp >= "1517080359000") || (item === {})) {
-                        // alert("about to clear interval");
+                    /*
+                        The nature of the API G/W is to always send back a succussful status code even
+                        when a 404 error occurs. Therefore, we must check to see whether an item (record)
+                        was returned
+                    */
+                    if (data.err) {
                         clearInterval(intervalId);
-                        if (lastTimestamp >= "1517080359000") {
-                            // Trigger the modal dialog
-                            $('#btnArrived').trigger('click');
-                            // alert("Your shipment has arrived at its Destination!!!");
+                        alert(`No data was retrieved for Order Id ${orderid}`);
+                    } else {
+
+                        let item = data.item;
+                        let position = {
+                            latitude: Number(item.lat.S),
+                            longitude: Number(item.lon.S)
+                        };
+                        bearing = Number(item.heading.N);
+
+                        // Set retrieved timestamp
+                        let numlastTimestamp = Number(item.transtimestamp.S) + 20000;
+                        lastTimestamp = numlastTimestamp.toString();
+
+                        // Set current location for google map
+                        gblOrigin = { lat: position.latitude, lng: position.longitude };
+
+                        // Reset Markers on Google map
+                        if (markersArray) {
+                            deleteMarkers(markersArray);
+                        }
+                        let markerPositions = [];
+                        markerPositions.push(gblOrigin);
+                        markerPositions.push(gblDestination);
+                        resetMarkers(markerPositions);
+
+                        // Set previous position
+                        prevPosition = position;
+
+
+                        // Check to see if shipment has reached destination
+                        // Note: This would not be needed in a true "live" application
+                        if ((++counter >= maxItems) || (position === gblDestination) || (lastTimestamp >= "1517080359000") || (item === {})) {
+
+                            clearInterval(intervalId);
+                            if (lastTimestamp >= "1517080359000") {
+                                // Trigger the modal dialog to notify user that the Shipment has reached its destination
+                                $('#btnArrived').trigger('click');
+                            }
                         }
                     }
                 }).fail(function (err) {
                     clearInterval(intervalId);
-                    console.log('An error occurred while retrieving geo location: ', err);
+                    alert('An error occurred while retrieving geo location: ' + err);
                 });
 
 
@@ -263,7 +270,6 @@
                 'chst=d_map_pin_letter&chld=D|FF0000|000000';
             originIcon = 'https://chart.googleapis.com/chart?' +
                 'chst=d_map_pin_letter&chld=O|FFFF00|000000';
-            // originIcon = 'images/delivery-truck.svg';
             map = new google.maps.Map(document.getElementById('map'), {
                 center: { lat: 55.53, lng: 9.4 },
                 zoom: 10
@@ -327,14 +333,11 @@
                 var position = {};
                 position.lat = marker.getPosition().lat();
                 position.lon = marker.getPosition().lng();
-                //console.log("Deleting Marker---> ", markersArray[i]);
+                // Delete Marker if it is not the destination marker
                 if (position.lat != gblDestination.lat) {
-
-                    // console.log("Deleting Marker Position---> ", position);
                     markersArray[i].setMap(null);
                 }
             }
-            // markersArray = [];
         }
 
         function resetMarkers(markerPositions) {
@@ -357,7 +360,9 @@
             })
 
             if (label != 'Dest') {
-                console.log('Marker at origin: \n', marker);
+                /*
+                    TODO: Attempt to rotate the icon image based on its direction
+                */
                 let prevLatLng = new google.maps.LatLng(prevPosition.longitude, prevPosition.latitude);
                 let rotation = google.maps.geometry.spherical.computeHeading(prevLatLng, marker.getPosition());
                 // console.log('Rotation: \n', rotation);
@@ -376,7 +381,7 @@
                 })
             }
 
-            // Get reverse address from lat/lng
+            // Get reverse address from lat/lng and apply to info window
             var infowindow = new google.maps.InfoWindow();
             var geocoder = new google.maps.Geocoder();
             geocoder.geocode({ location: marker.getPosition() }, function (results, status) {
@@ -407,10 +412,12 @@
             markersArray.push(marker);
 
 
-            // // Add Polylines
             google.maps.event.addListener(markersArray[0], 'position_changed', update);
             // google.maps.event.addListener(markersArray[1], 'position_changed', update);
 
+            /*
+                TODO: Attempt to add Polylines to show the route being followed
+            */
             poly = new google.maps.Polyline({
                 strokeColor: '#FF0000',
                 strokeOpacity: 1.0,

@@ -1,20 +1,6 @@
-
-
-
-**Rick Farina**
-
-rickrfarina@gmail.com
-
-[linkedin.com/in/rickrfarina](https://www.linkedin.com/in/rickrfarina?lipi=urn%3Ali%3Apage%3Ad_flagship3_profile_view_base_contact_details%3BDK6XjO57TJKU1Q62vK50Hg%3D%3D)
-
-(210) 896-1837
-
-
 # AWS Order Tracking Demo
 
-
 ## **April 20, 2018**
-
 
 # OVERVIEW
 

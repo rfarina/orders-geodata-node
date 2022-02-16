@@ -10,7 +10,7 @@ rickrfarina@gmail.com
 (210) 896-1837
 
 
-# AWS Demo
+# AWS Order Tracking Demo
 
 
 ## **April 20, 2018**
@@ -23,7 +23,7 @@ This application is intended to show how modernization can be achieved by gradua
 It also shows how costs can be mitigated by taking advantage of AWS Managed Services such as EC2, API GW, Lambda, and DynamoDB. Additionally, it eliminates the need to purchase additional disk, cpu, memory and the corresponding increase in maintenance costs.
 
 
-# GOALS
+## Goals
 
 
 
@@ -32,7 +32,7 @@ It also shows how costs can be mitigated by taking advantage of AWS Managed Serv
 3. Emphasize how an organization looking to modernize can utilize small applications to become familiar with Cloud technologies in addition to beginning the onboarding process with new developers that may not be available within its current pool of resources.
 
 
-# APPLICATION SCENARIO
+## Application Scenario
 
 This application is based on a Logistics company that handles and delivers freight to its customers, much like FedEx, UPS, and Amazon. For demo purposes we will assume that the organization has a fleet of delivery trucks, and that each driver is equipped with a mobile device that allows for route navigation, and reporting delivery completion back to the system of record. 
 
@@ -41,7 +41,7 @@ However, the company is running into customer service issues as the demand for r
 After reviewing the options, the company decides to implement this application by taking advantage of AWS Cloud Services.
 
 
-# APPLICATION SPECIFICS
+## Application Specifics
 
 Because we don’t have an actual fleet of trucks and drivers that we can use to track data in real-time, we did the next best thing. A web based application was written that reports geographic location points continuously and records them in DynamoDB. The points were collected by starting the application on a mobile device and driving from point A to point B; with point A representing the origin and point B representing the destination. The data is keyed by OrderId and Transaction Time Stamp.
 
@@ -49,10 +49,10 @@ These records were then used to “simulate” an actual driver making a deliver
 
 The application performs a very simple function. The browser component of the application requests the geographic data points in a loop via a nodejs web application running on an AWS EC2 instance. The nodejs application in turn retrieves the data via an API GW → Lambda → DynamoDB invocation, and returns the data as a json object. The returned object contains the latitude/longitude points, which are used to track the shipment’s movements on a map via the use of the Google MAP API.
 
-The application can be run here [http://54.200.121.119:5001](http://54.200.121.119:5001).<span style="text-decoration:underline;"> [http://54.190.58.49:5001](http://54.190.58.49:5001) </span>Simply select an Order Id and click the Track Shipment button. Note that Order Id “12345” is valid; while Order Id “xxxxx” is invalid and is included to show how errors are generally handled. 
+The application can be run here [~~http://54.200.121.119:5001~~] (aws ec2 instance currently stopped). Simply select an Order Id and click the Track Shipment button. Note that Order Id “12345” is valid; while Order Id “xxxxx” is invalid and is included to show how errors are generally handled. 
 
 
-# PROGRAMMING NOTES
+## Programming Notes
 
 Because this was always intended to be a demo, it was written procedurally with all the Html, CSS, and Javascript in the same index.html file. This was done for ease of development and quickly getting the application working. With the proper refactoring, the CSS and JavaScript will eventually be split out into separate files and housed in “styles” and “scripts” folders respectively. 
 
